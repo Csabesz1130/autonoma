@@ -163,7 +163,7 @@ class WebappCreatorMCPServer(MCPServer):
             requirements: str,
             tech_stack: List[str]
         ) -> Dict[str, Any]:
-            """Generate a specific component (frontend, backend, etc.)"""
+            """Generate a specific component (frontend, backend, chrome_extension, etc.)"""
             
             try:
                 if component_type == "frontend":
@@ -172,10 +172,85 @@ class WebappCreatorMCPServer(MCPServer):
                     return await self._generate_backend_component(requirements, tech_stack)
                 elif component_type == "database":
                     return await self._generate_database_schema(requirements, tech_stack)
+                elif component_type == "chrome_extension":
+                    return await self._generate_chrome_extension(requirements, tech_stack)
                 else:
                     return {"error": f"Unknown component type: {component_type}"}
             except Exception as e:
                 logger.error(f"Component generation failed: {e}")
+                return {"error": str(e)}
+        
+        @self.tool("generate_chrome_extension")
+        async def generate_chrome_extension(
+            prompt: str,
+            extension_type: str = "popup",
+            permissions: Optional[List[str]] = None
+        ) -> Dict[str, Any]:
+            """Generate a complete Chrome extension based on user prompt"""
+            
+            try:
+                # Analyze extension requirements
+                analysis_prompt = f"""
+                Analyze this Chrome extension requirement and generate a complete extension:
+                
+                User Request: {prompt}
+                Extension Type: {extension_type}
+                Permissions: {permissions or []}
+                
+                Generate:
+                1. Extension manifest.json (Manifest V3)
+                2. Main extension files based on type
+                3. Proper Chrome API usage
+                4. Modern JavaScript/HTML/CSS
+                5. Security best practices
+                
+                Return a detailed JSON structure with all files and configurations.
+                """
+                
+                response = await self.openai_client.chat.completions.create(
+                    model="gpt-4-turbo-preview",
+                    messages=[{"role": "user", "content": analysis_prompt}],
+                    response_format={"type": "json_object"}
+                )
+                
+                return json.loads(response.choices[0].message.content)
+                
+            except Exception as e:
+                logger.error(f"Chrome extension generation failed: {e}")
+                return {"error": str(e)}
+        
+        @self.tool("analyze_extension_idea")
+        async def analyze_extension_idea(prompt: str) -> Dict[str, Any]:
+            """Analyze Chrome extension idea and suggest optimal configuration"""
+            
+            analysis_prompt = f"""
+            Analyze this Chrome extension idea and provide recommendations:
+            
+            Extension Idea: {prompt}
+            
+            Analyze:
+            1. Best extension type (popup, content_script, background, devtools, options)
+            2. Required Chrome permissions
+            3. Technical complexity (Simple/Medium/Complex)
+            4. Development time estimate
+            5. Chrome Web Store policy compliance
+            6. Similar existing extensions
+            7. Unique value proposition
+            8. Target user personas
+            
+            Return detailed JSON analysis with actionable recommendations.
+            """
+            
+            try:
+                response = await self.anthropic_client.messages.create(
+                    model="claude-3-sonnet-20240229",
+                    max_tokens=2000,
+                    messages=[{"role": "user", "content": analysis_prompt}]
+                )
+                
+                return json.loads(response.content[0].text)
+            except Exception as e:
+                logger.error(f"Extension idea analysis failed: {e}")
                 return {"error": str(e)}
     
     def _register_resources(self):

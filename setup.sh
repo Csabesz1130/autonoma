@@ -357,7 +357,14 @@ main() {
     echo "2. Run './start-dev.sh' to start all services"
     echo "3. Visit http://localhost:3000 to start creating apps!"
     echo
-    echo "📖 Documentation: https://github.com/your-org/autonoma"
+    echo "� What you can create:"
+    echo "• Full-stack web applications (Next.js + FastAPI)"
+    echo "• Chrome browser extensions (all types)"
+    echo "• Web3 decentralized applications"
+    echo "• Real-time applications with WebSockets"
+    echo "• AI-powered applications with agent coordination"
+    echo
+    echo "�📖 Documentation: https://github.com/your-org/autonoma"
     echo "💬 Support: https://discord.gg/autonoma"
 }
 

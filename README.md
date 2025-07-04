@@ -5,6 +5,7 @@
 ## 🌟 Features
 
 - **Next.js 14** with App Router & Server Actions
+- **Chrome Extension Generator** - Create browser extensions with AI
 - **MCP Server Architecture** for advanced AI agent communication
 - **Multi-Agent Orchestration** with specialized AI agents
 - **Web3 Integration** for decentralized app creation

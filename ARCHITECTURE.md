@@ -144,22 +144,28 @@ Our platform uses specialized AI agents that work together to create comprehensi
    - Designs database schemas
    - Implements business logic
 
-5. **Testing Agent**
+5. **Chrome Extension Agent**
+   - Generates Chrome extension manifests
+   - Creates popup interfaces and content scripts
+   - Implements Chrome API integrations
+   - Handles permissions and security
+
+6. **Testing Agent**
    - Generates unit tests
    - Creates integration tests
    - Implements E2E testing
 
-6. **Security Agent**
+7. **Security Agent**
    - Implements authentication
    - Adds security measures
    - Performs vulnerability analysis
 
-7. **Performance Agent**
+8. **Performance Agent**
    - Optimizes code performance
    - Implements caching strategies
    - Analyzes bundle sizes
 
-8. **Deployment Agent**
+9. **Deployment Agent**
    - Creates deployment configs
    - Sets up CI/CD pipelines
    - Manages infrastructure
@@ -195,7 +201,12 @@ User Prompt → Requirements Analysis → Tech Stack Selection → Architecture 
 Architecture Plan → Parallel Agent Processing → Code Validation → Integration Testing
 ```
 
-### 3. Deployment Pipeline
+### 3. Chrome Extension Generation Pipeline
+```
+Extension Prompt → Extension Type Analysis → Manifest Generation → Component Creation → ZIP Package
+```
+
+### 4. Deployment Pipeline
 ```
 Generated Code → Build Process → Testing → Deployment → Live Preview
 ```
@@ -341,6 +352,35 @@ Stages:
      - Health checks
 ```
 
+## 🌐 Chrome Extension Generation
+
+### Extension Types Supported
+- **Popup Extensions**: Toolbar interfaces with modern UI
+- **Content Scripts**: Web page modification and enhancement
+- **Background Services**: Background processing and monitoring
+- **DevTools Extensions**: Developer tool integrations
+- **Options Pages**: Configuration and settings interfaces
+
+### Chrome API Integration
+- **Storage API**: Persistent data storage
+- **Tabs API**: Tab management and interaction
+- **Notifications API**: System notifications
+- **Web Request API**: Network request monitoring
+- **Scripting API**: Dynamic content injection
+
+### Extension Features
+- **Manifest V3 Compliance**: Latest Chrome extension standards
+- **Security Best Practices**: CSP headers and permission optimization
+- **Modern JavaScript**: ES6+ with proper bundling
+- **Responsive Design**: Mobile-friendly extension interfaces
+- **Icon Generation**: Automated icon creation for all sizes
+
+### Publishing Support
+- **Chrome Web Store Guidance**: Step-by-step publishing instructions
+- **Policy Compliance**: Automated policy checking
+- **Testing Instructions**: Local testing and debugging guides
+- **Version Management**: Automated version bumping
+
 ## 🔮 Future Enhancements
 
 ### Planned Features
@@ -350,6 +390,7 @@ Stages:
 4. **Advanced Analytics**: Usage patterns and optimization
 5. **Collaborative Features**: Team workspaces
 6. **Mobile App**: React Native companion app
+7. **Browser Extension Store**: Multi-browser extension support
 
 ### Technology Roadmap
 - **Edge Computing**: Move AI processing closer to users
