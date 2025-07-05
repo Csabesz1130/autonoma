@@ -1,0 +1,53 @@
+{
+  "name": "Pomodoro Timer Extension",
+  "description": "A productivity timer extension with Pomodoro technique support",
+  "type": "popup",
+  "complexity": "Simple",
+  "estimated_time": "10-15 minutes",
+  "permissions": ["storage", "notifications", "alarms"],
+  "manifest": {
+    "manifest_version": 3,
+    "name": "AI Generated Pomodoro Timer",
+    "version": "1.0.0",
+    "description": "A Pomodoro timer to boost your productivity",
+    "permissions": ["storage", "notifications", "alarms"],
+    "action": {
+      "default_popup": "popup.html",
+      "default_title": "Pomodoro Timer"
+    },
+    "icons": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "files": {
+    "popup.html": "<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <title>Pomodoro Timer</title>\n  <link rel=\"stylesheet\" href=\"popup.css\">\n</head>\n<body>\n  <div class=\"container\">\n    <h1>🍅 Pomodoro Timer</h1>\n    <div class=\"timer-display\">\n      <div id=\"time-display\">25:00</div>\n      <div id=\"session-type\">Work Session</div>\n    </div>\n    <div class=\"controls\">\n      <button id=\"start-btn\" class=\"btn primary\">Start</button>\n      <button id=\"pause-btn\" class=\"btn secondary\">Pause</button>\n      <button id=\"reset-btn\" class=\"btn tertiary\">Reset</button>\n    </div>\n    <div class=\"settings\">\n      <div class=\"setting-group\">\n        <label>Work Time (min):</label>\n        <input type=\"number\" id=\"work-time\" value=\"25\" min=\"1\" max=\"60\">\n      </div>\n      <div class=\"setting-group\">\n        <label>Break Time (min):</label>\n        <input type=\"number\" id=\"break-time\" value=\"5\" min=\"1\" max=\"30\">\n      </div>\n    </div>\n    <div class=\"stats\">\n      <div class=\"stat\">\n        <span class=\"stat-value\" id=\"completed-sessions\">0</span>\n        <span class=\"stat-label\">Completed</span>\n      </div>\n      <div class=\"stat\">\n        <span class=\"stat-value\" id=\"total-time\">0h</span>\n        <span class=\"stat-label\">Total Time</span>\n      </div>\n    </div>\n  </div>\n  <script src=\"popup.js\"></script>\n</body>\n</html>",
+    "popup.css": "* {\n  margin: 0;\n  padding: 0;\n  box-sizing: border-box;\n}\n\nbody {\n  width: 300px;\n  min-height: 400px;\n  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);\n  color: white;\n}\n\n.container {\n  padding: 20px;\n}\n\nh1 {\n  text-align: center;\n  margin-bottom: 20px;\n  font-size: 18px;\n  font-weight: 600;\n}\n\n.timer-display {\n  text-align: center;\n  margin-bottom: 20px;\n  background: rgba(255, 255, 255, 0.1);\n  border-radius: 12px;\n  padding: 20px;\n  backdrop-filter: blur(10px);\n}\n\n#time-display {\n  font-size: 36px;\n  font-weight: bold;\n  margin-bottom: 8px;\n  font-family: 'Courier New', monospace;\n}\n\n#session-type {\n  font-size: 14px;\n  opacity: 0.8;\n}\n\n.controls {\n  display: flex;\n  gap: 8px;\n  margin-bottom: 20px;\n}\n\n.btn {\n  flex: 1;\n  padding: 10px;\n  border: none;\n  border-radius: 8px;\n  font-weight: 600;\n  cursor: pointer;\n  transition: all 0.2s ease;\n}\n\n.btn.primary {\n  background: #4CAF50;\n  color: white;\n}\n\n.btn.secondary {\n  background: #FF9800;\n  color: white;\n}\n\n.btn.tertiary {\n  background: rgba(255, 255, 255, 0.2);\n  color: white;\n}\n\n.btn:hover {\n  transform: translateY(-1px);\n  opacity: 0.9;\n}\n\n.settings {\n  margin-bottom: 20px;\n}\n\n.setting-group {\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  margin-bottom: 10px;\n}\n\n.setting-group label {\n  font-size: 12px;\n  opacity: 0.9;\n}\n\n.setting-group input {\n  width: 60px;\n  padding: 4px 8px;\n  border: none;\n  border-radius: 4px;\n  background: rgba(255, 255, 255, 0.1);\n  color: white;\n  text-align: center;\n}\n\n.stats {\n  display: flex;\n  justify-content: space-around;\n  background: rgba(255, 255, 255, 0.1);\n  border-radius: 8px;\n  padding: 15px;\n}\n\n.stat {\n  text-align: center;\n}\n\n.stat-value {\n  display: block;\n  font-size: 18px;\n  font-weight: bold;\n}\n\n.stat-label {\n  font-size: 11px;\n  opacity: 0.7;\n}",
+    "popup.js": "class PomodoroTimer {\n  constructor() {\n    this.workTime = 25 * 60; // 25 minutes in seconds\n    this.breakTime = 5 * 60; // 5 minutes in seconds\n    this.currentTime = this.workTime;\n    this.isRunning = false;\n    this.isWorkSession = true;\n    this.interval = null;\n    this.completedSessions = 0;\n    this.totalTime = 0;\n    \n    this.initializeElements();\n    this.loadSettings();\n    this.loadStats();\n    this.updateDisplay();\n    this.bindEvents();\n  }\n  \n  initializeElements() {\n    this.timeDisplay = document.getElementById('time-display');\n    this.sessionType = document.getElementById('session-type');\n    this.startBtn = document.getElementById('start-btn');\n    this.pauseBtn = document.getElementById('pause-btn');\n    this.resetBtn = document.getElementById('reset-btn');\n    this.workTimeInput = document.getElementById('work-time');\n    this.breakTimeInput = document.getElementById('break-time');\n    this.completedSessionsEl = document.getElementById('completed-sessions');\n    this.totalTimeEl = document.getElementById('total-time');\n  }\n  \n  bindEvents() {\n    this.startBtn.addEventListener('click', () => this.start());\n    this.pauseBtn.addEventListener('click', () => this.pause());\n    this.resetBtn.addEventListener('click', () => this.reset());\n    \n    this.workTimeInput.addEventListener('change', () => this.updateWorkTime());\n    this.breakTimeInput.addEventListener('change', () => this.updateBreakTime());\n  }\n  \n  start() {\n    if (!this.isRunning) {\n      this.isRunning = true;\n      this.startBtn.textContent = 'Running...';\n      this.startBtn.disabled = true;\n      \n      this.interval = setInterval(() => {\n        this.currentTime--;\n        this.updateDisplay();\n        \n        if (this.currentTime <= 0) {\n          this.sessionComplete();\n        }\n      }, 1000);\n    }\n  }\n  \n  pause() {\n    this.isRunning = false;\n    this.startBtn.textContent = 'Start';\n    this.startBtn.disabled = false;\n    \n    if (this.interval) {\n      clearInterval(this.interval);\n      this.interval = null;\n    }\n  }\n  \n  reset() {\n    this.pause();\n    this.currentTime = this.isWorkSession ? this.workTime : this.breakTime;\n    this.updateDisplay();\n  }\n  \n  sessionComplete() {\n    this.pause();\n    \n    if (this.isWorkSession) {\n      this.completedSessions++;\n      this.totalTime += this.workTime;\n      this.showNotification('Work session complete!', 'Time for a break 🎉');\n    } else {\n      this.showNotification('Break complete!', 'Back to work 💪');\n    }\n    \n    this.isWorkSession = !this.isWorkSession;\n    this.currentTime = this.isWorkSession ? this.workTime : this.breakTime;\n    this.updateDisplay();\n    this.saveStats();\n  }\n  \n  updateDisplay() {\n    const minutes = Math.floor(this.currentTime / 60);\n    const seconds = this.currentTime % 60;\n    this.timeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;\n    \n    this.sessionType.textContent = this.isWorkSession ? 'Work Session' : 'Break Time';\n    this.completedSessionsEl.textContent = this.completedSessions;\n    this.totalTimeEl.textContent = `${Math.floor(this.totalTime / 3600)}h ${Math.floor((this.totalTime % 3600) / 60)}m`;\n  }\n  \n  updateWorkTime() {\n    this.workTime = parseInt(this.workTimeInput.value) * 60;\n    if (this.isWorkSession && !this.isRunning) {\n      this.currentTime = this.workTime;\n      this.updateDisplay();\n    }\n    this.saveSettings();\n  }\n  \n  updateBreakTime() {\n    this.breakTime = parseInt(this.breakTimeInput.value) * 60;\n    if (!this.isWorkSession && !this.isRunning) {\n      this.currentTime = this.breakTime;\n      this.updateDisplay();\n    }\n    this.saveSettings();\n  }\n  \n  showNotification(title, message) {\n    if (chrome.notifications) {\n      chrome.notifications.create({\n        type: 'basic',\n        iconUrl: 'icons/icon48.png',\n        title: title,\n        message: message\n      });\n    }\n  }\n  \n  saveSettings() {\n    chrome.storage.sync.set({\n      workTime: this.workTime,\n      breakTime: this.breakTime\n    });\n  }\n  \n  loadSettings() {\n    chrome.storage.sync.get(['workTime', 'breakTime'], (result) => {\n      if (result.workTime) {\n        this.workTime = result.workTime;\n        this.workTimeInput.value = this.workTime / 60;\n      }\n      if (result.breakTime) {\n        this.breakTime = result.breakTime;\n        this.breakTimeInput.value = this.breakTime / 60;\n      }\n      this.currentTime = this.workTime;\n      this.updateDisplay();\n    });\n  }\n  \n  saveStats() {\n    chrome.storage.sync.set({\n      completedSessions: this.completedSessions,\n      totalTime: this.totalTime\n    });\n  }\n  \n  loadStats() {\n    chrome.storage.sync.get(['completedSessions', 'totalTime'], (result) => {\n      if (result.completedSessions) {\n        this.completedSessions = result.completedSessions;\n      }\n      if (result.totalTime) {\n        this.totalTime = result.totalTime;\n      }\n      this.updateDisplay();\n    });\n  }\n}\n\n// Initialize the timer when the popup loads\ndocument.addEventListener('DOMContentLoaded', () => {\n  new PomodoroTimer();\n});"
+  },
+  "install_instructions": [
+    "1. Download and extract the extension files",
+    "2. Open Chrome and go to chrome://extensions/", 
+    "3. Enable 'Developer mode' in the top right",
+    "4. Click 'Load unpacked' and select the extension folder",
+    "5. The Pomodoro timer icon will appear in your toolbar",
+    "6. Click the icon to start using your productivity timer!"
+  ],
+  "features": [
+    "25/5 minute work/break timer (customizable)",
+    "Visual and audio notifications",
+    "Session tracking and statistics",
+    "Persistent settings storage",
+    "Clean, modern interface",
+    "Keyboard shortcuts support"
+  ],
+  "use_cases": [
+    "Productivity enhancement",
+    "Time management",
+    "Focus improvement",
+    "Work-life balance",
+    "Study sessions"
+  ]
+}
