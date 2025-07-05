@@ -12,6 +12,7 @@ import { CodePreview } from '@/components/preview/code-preview'
 import { AppPreview } from '@/components/preview/app-preview'
 import { TechStackSelector } from '@/components/forms/tech-stack-selector'
 import { ProjectTemplates } from '@/components/templates/project-templates'
+import { SimpleExtensionCreator } from '@/components/chrome-extension/simple-extension-creator'
 import { 
   Sparkles, 
   Code, 
@@ -194,83 +195,12 @@ export default function HomePage() {
         </TabsContent>
 
         <TabsContent value="extension">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Chrome className="h-6 w-6 text-blue-600" />
-                <span>Chrome Extension Generator</span>
-              </CardTitle>
-              <CardDescription>
-                Create powerful Chrome extensions with AI - from popup tools to content scripts
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { 
-                    name: 'Popup Extension', 
-                    desc: 'Quick access toolbar extension',
-                    icon: '🔧',
-                    complexity: 'Simple',
-                    time: '5-15 min'
-                  },
-                  { 
-                    name: 'Content Script', 
-                    desc: 'Modify and enhance web pages',
-                    icon: '📝',
-                    complexity: 'Medium',
-                    time: '15-30 min'
-                  },
-                  { 
-                    name: 'Background Service', 
-                    desc: 'Background processing extension',
-                    icon: '⚙️',
-                    complexity: 'Advanced',
-                    time: '30-60 min'
-                  }
-                ].map((type, index) => (
-                  <Card key={index} className="cursor-pointer hover:shadow-md transition-shadow">
-                    <CardContent className="p-4 text-center space-y-3">
-                      <div className="text-3xl">{type.icon}</div>
-                      <div>
-                        <h3 className="font-semibold">{type.name}</h3>
-                        <p className="text-sm text-muted-foreground">{type.desc}</p>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <Badge variant="secondary">{type.complexity}</Badge>
-                        <span className="text-muted-foreground">{type.time}</span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-
-              <div className="space-y-4">
-                <Label htmlFor="extension-prompt">Describe Your Chrome Extension</Label>
-                <Textarea
-                  id="extension-prompt"
-                  placeholder="I want to create a Chrome extension that blocks distracting websites during work hours, shows a productivity timer, and sends notifications when break time starts..."
-                  className="min-h-[100px]"
-                />
-                <Button className="w-full" size="lg">
-                  <Chrome className="mr-2 h-4 w-4" />
-                  Generate Chrome Extension
-                </Button>
-              </div>
-
-              <div className="bg-muted p-4 rounded-lg">
-                <h4 className="font-medium mb-2">Popular Extension Ideas:</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                  <div>• Password Generator</div>
-                  <div>• Website Time Tracker</div>
-                  <div>• Social Media Blocker</div>
-                  <div>• Page Screenshot Tool</div>
-                  <div>• Quick Note Taker</div>
-                  <div>• Color Picker</div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <SimpleExtensionCreator 
+            onExtensionGenerated={(extension) => {
+              console.log('Extension generated:', extension)
+              // You can add additional handling here
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="chat">

@@ -36,6 +36,23 @@ app.include_router(chrome_extension.router, prefix="/api/chrome-extension", tags
 async def root():
     return {"message": "Welcome to Autonoma API"}
 
+@app.get("/api/health")
+async def health():
+    """General health check endpoint"""
+    from datetime import datetime
+    return {
+        "status": "healthy",
+        "timestamp": datetime.utcnow().isoformat(),
+        "service": "autonoma-api",
+        "version": "2.0.0",
+        "endpoints": {
+            "auth": "/api/auth",
+            "projects": "/api/projects", 
+            "webapp": "/api/webapp",
+            "chrome_extension": "/api/chrome-extension"
+        }
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -29,6 +29,40 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+@router.get("/health")
+async def health_check():
+    """Health check endpoint for Chrome Extension API"""
+    try:
+        # Check if the chrome extension generator is available
+        generator_status = chrome_extension_generator is not None
+        
+        return {
+            "status": "healthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "service": "chrome-extension-api",
+            "version": "1.0.0",
+            "generator_available": generator_status,
+            "endpoints": {
+                "generate": "/api/chrome-extension/generate",
+                "analyze": "/api/chrome-extension/analyze",
+                "list": "/api/chrome-extension/list",
+                "templates": "/api/chrome-extension/templates",
+                "types": "/api/chrome-extension/types",
+                "permissions": "/api/chrome-extension/permissions",
+                "download": "/api/chrome-extension/download/{extension_id}",
+                "preview": "/api/chrome-extension/preview/{extension_id}",
+                "publish": "/api/chrome-extension/publish/{extension_id}"
+            }
+        }
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return {
+            "status": "unhealthy",
+            "timestamp": datetime.utcnow().isoformat(),
+            "service": "chrome-extension-api",
+            "error": str(e)
+        }
+
 # Pydantic Models
 class ChromeExtensionRequest(BaseModel):
     prompt: str = Field(..., description="Description of the Chrome extension to generate")
