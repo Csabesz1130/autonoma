@@ -13,3 +13,4 @@ class User(Base):
     is_superuser = Column(Boolean(), default=False)
 
     projects = relationship("Project", back_populates="owner")
+    chrome_extensions = relationship("ChromeExtension", back_populates="user")

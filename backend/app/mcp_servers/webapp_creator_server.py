@@ -82,12 +82,16 @@ class WebappCreatorMCPServer(MCPServer):
             """Generate a complete webapp based on user prompt"""
             request_id = str(uuid.uuid4())
             
+            # TODO: Get actual user_id from auth context when MCP supports it
+            # For now, use a default user or extract from headers
+            user_id = "default"  # This should be replaced with actual auth
+            
             request = GenerationRequest(
                 id=request_id,
                 prompt=prompt,
                 tech_stack=tech_stack or ["nextjs", "fastapi", "postgresql"],
                 project_type=project_type,
-                user_id="default",  # TODO: Get from auth context
+                user_id=user_id,
                 timestamp=datetime.now()
             )
             

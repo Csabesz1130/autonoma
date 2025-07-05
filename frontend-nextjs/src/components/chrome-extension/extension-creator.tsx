@@ -147,12 +147,22 @@ export function ChromeExtensionCreator({ onExtensionGenerated }: ChromeExtension
       setIsGenerating(true)
       setGenerationProgress(25)
 
-      // Simulate API call to analyze extension requirements
+      // API call to analyze extension requirements
       const response = await fetch('/api/chrome-extension/analyze', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        // In real implementation: body: JSON.stringify({ prompt })
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          // Add auth header if available
+          ...(localStorage.getItem('auth_token') && {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          })
+        },
+        body: JSON.stringify({ prompt })
       })
+
+      if (!response.ok) {
+        throw new Error(`Analysis failed: ${response.status} ${response.statusText}`)
+      }
 
       const analysisData = await response.json()
       setAnalysis(analysisData)
@@ -169,6 +179,15 @@ export function ChromeExtensionCreator({ onExtensionGenerated }: ChromeExtension
       setStep(2)
     } catch (error) {
       console.error('Analysis failed:', error)
+      // Show error message to user
+      setAnalysis({
+        error: error instanceof Error ? error.message : 'Analysis failed. Please try again.',
+        recommendations: {
+          complexity_score: 'Unknown',
+          estimated_development_time: 'Unknown',
+          required_permissions: []
+        }
+      })
     } finally {
       setIsGenerating(false)
       setGenerationProgress(0)
@@ -191,10 +210,16 @@ export function ChromeExtensionCreator({ onExtensionGenerated }: ChromeExtension
         })
       }, 500)
 
-      // Simulate API call to generate extension
+      // API call to generate extension
       const response = await fetch('/api/chrome-extension/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          // Add auth header if available
+          ...(localStorage.getItem('auth_token') && {
+            'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+          })
+        },
         body: JSON.stringify({
           prompt,
           extension_type: selectedType,
@@ -202,6 +227,10 @@ export function ChromeExtensionCreator({ onExtensionGenerated }: ChromeExtension
           target_websites: targetWebsites.split(',').map(s => s.trim()).filter(Boolean)
         })
       })
+
+      if (!response.ok) {
+        throw new Error(`Extension generation failed: ${response.status} ${response.statusText}`)
+      }
 
       const extensionData = await response.json()
       setGeneratedExtension(extensionData)
@@ -214,6 +243,17 @@ export function ChromeExtensionCreator({ onExtensionGenerated }: ChromeExtension
       setStep(3)
     } catch (error) {
       console.error('Extension generation failed:', error)
+      // Show error message to user
+      setGeneratedExtension({
+        error: error instanceof Error ? error.message : 'Extension generation failed. Please try again.',
+        extension_id: '',
+        name: '',
+        description: '',
+        extension_type: '',
+        status: 'failed',
+        install_instructions: []
+      })
+      setStep(3) // Show error in step 3
     } finally {
       setIsGenerating(false)
     }
@@ -370,29 +410,38 @@ export function ChromeExtensionCreator({ onExtensionGenerated }: ChromeExtension
               <Card>
                 <CardHeader>
                   <CardTitle>AI Analysis Results</CardTitle>
-                  <CardDescription>Based on your description, here's what we recommend</CardDescription>
+                  <CardDescription>
+                    {analysis.error ? 'Analysis encountered an error' : 'Based on your description, here\'s what we recommend'}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-blue-600">
-                        {analysis.recommendations?.complexity_score || 'Medium'}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Complexity</div>
+                  {analysis.error ? (
+                    <div className="text-center p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <div className="text-red-600 font-medium">Analysis Failed</div>
+                      <div className="text-sm text-red-500 mt-2">{analysis.error}</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-green-600">
-                        {analysis.recommendations?.estimated_development_time || '15-30 min'}
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-blue-600">
+                          {analysis.recommendations?.complexity_score || 'Medium'}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Complexity</div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Est. Time</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-purple-600">
-                        {analysis.recommendations?.required_permissions?.length || 2}
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-green-600">
+                          {analysis.recommendations?.estimated_development_time || '15-30 min'}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Est. Time</div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Permissions</div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-purple-600">
+                          {analysis.recommendations?.required_permissions?.length || 2}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Permissions</div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </CardContent>
               </Card>
             )}
@@ -511,65 +560,83 @@ export function ChromeExtensionCreator({ onExtensionGenerated }: ChromeExtension
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
-                    <Extension className="h-4 w-4 text-green-600" />
+                  <div className={`w-8 h-8 rounded-full ${generatedExtension.error ? 'bg-red-100' : 'bg-green-100'} flex items-center justify-center`}>
+                    <Extension className={`h-4 w-4 ${generatedExtension.error ? 'text-red-600' : 'text-green-600'}`} />
                   </div>
-                  <span>Extension Generated Successfully!</span>
+                  <span>{generatedExtension.error ? 'Extension Generation Failed' : 'Extension Generated Successfully!'}</span>
                 </CardTitle>
                 <CardDescription>
-                  Your Chrome extension "{generatedExtension.name}" is ready to download and install
+                  {generatedExtension.error ? 
+                    'There was an error generating your extension' : 
+                    `Your Chrome extension "${generatedExtension.name}" is ready to download and install`
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <h3 className="font-semibold mb-3">Extension Details</h3>
-                    <div className="space-y-2 text-sm">
-                      <div><strong>Name:</strong> {generatedExtension.name}</div>
-                      <div><strong>Type:</strong> {generatedExtension.extension_type}</div>
-                      <div><strong>Status:</strong> 
-                        <Badge className="ml-2 bg-green-100 text-green-800">
-                          {generatedExtension.status}
-                        </Badge>
+                {generatedExtension.error ? (
+                  <div className="text-center p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="text-red-600 font-medium">Generation Failed</div>
+                    <div className="text-sm text-red-500 mt-2">{generatedExtension.error}</div>
+                    <Button 
+                      onClick={() => { setStep(1); setGeneratedExtension(null); setAnalysis(null); }} 
+                      className="mt-4"
+                    >
+                      Try Again
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <h3 className="font-semibold mb-3">Extension Details</h3>
+                        <div className="space-y-2 text-sm">
+                          <div><strong>Name:</strong> {generatedExtension.name}</div>
+                          <div><strong>Type:</strong> {generatedExtension.extension_type}</div>
+                          <div><strong>Status:</strong> 
+                            <Badge className="ml-2 bg-green-100 text-green-800">
+                              {generatedExtension.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <h3 className="font-semibold mb-3">Quick Actions</h3>
+                        <div className="space-y-2">
+                          <Button onClick={handleDownloadExtension} className="w-full">
+                            <Download className="mr-2 h-4 w-4" />
+                            Download Extension
+                          </Button>
+                          <Button variant="outline" className="w-full">
+                            <Code className="mr-2 h-4 w-4" />
+                            View Code
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-semibold mb-3">Quick Actions</h3>
-                    <div className="space-y-2">
-                      <Button onClick={handleDownloadExtension} className="w-full">
-                        <Download className="mr-2 h-4 w-4" />
-                        Download Extension
+
+                    <div>
+                      <h3 className="font-semibold mb-3">Installation Instructions</h3>
+                      <div className="bg-muted p-4 rounded-lg">
+                        <ol className="list-decimal list-inside space-y-2 text-sm">
+                          {generatedExtension.install_instructions?.map((instruction: string, index: number) => (
+                            <li key={index}>{instruction}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    </div>
+
+                    <div className="flex space-x-3">
+                      <Button variant="outline" onClick={() => { setStep(1); setGeneratedExtension(null); }}>
+                        Create Another Extension
                       </Button>
-                      <Button variant="outline" className="w-full">
-                        <Code className="mr-2 h-4 w-4" />
-                        View Code
+                      <Button onClick={handleDownloadExtension} className="flex-1">
+                        <Download className="mr-2 h-4 w-4" />
+                        Download & Install
                       </Button>
                     </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold mb-3">Installation Instructions</h3>
-                  <div className="bg-muted p-4 rounded-lg">
-                    <ol className="list-decimal list-inside space-y-2 text-sm">
-                      {generatedExtension.install_instructions?.map((instruction: string, index: number) => (
-                        <li key={index}>{instruction}</li>
-                      ))}
-                    </ol>
-                  </div>
-                </div>
-
-                <div className="flex space-x-3">
-                  <Button variant="outline" onClick={() => { setStep(1); setGeneratedExtension(null); }}>
-                    Create Another Extension
-                  </Button>
-                  <Button onClick={handleDownloadExtension} className="flex-1">
-                    <Download className="mr-2 h-4 w-4" />
-                    Download & Install
-                  </Button>
-                </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </motion.div>

@@ -13,10 +13,17 @@ import logging
 from datetime import datetime
 import tempfile
 import os
+import uuid
 
-from app.core.deps import get_current_user
+from sqlalchemy.orm import Session
+from app.api.deps import get_current_user, get_db
 from app.services.chrome_extension_generator import chrome_extension_generator
 from app.schemas.user import User
+from app.models.chrome_extension import (
+    ChromeExtension, 
+    ChromeExtensionComponent, 
+    ExtensionGeneration
+)
 
 logger = logging.getLogger(__name__)
 
@@ -52,6 +59,7 @@ class ExtensionTemplateResponse(BaseModel):
 async def generate_chrome_extension(
     request: ChromeExtensionRequest,
     background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -61,12 +69,61 @@ async def generate_chrome_extension(
     try:
         logger.info(f"Starting Chrome extension generation for user {current_user.id}")
         
+        # Create extension record in database
+        extension_id = str(uuid.uuid4())
+        
+        # Create generation record for tracking
+        generation = ExtensionGeneration(
+            id=str(uuid.uuid4()),
+            user_id=str(current_user.id),
+            prompt=request.prompt,
+            extension_type=request.extension_type,
+            status="processing"
+        )
+        db.add(generation)
+        db.commit()
+        
         # Generate extension using AI agents
         extension = await chrome_extension_generator.generate_chrome_extension(
             prompt=request.prompt,
             extension_type=request.extension_type,
             user_id=str(current_user.id)
         )
+        
+        # Save extension to database
+        db_extension = ChromeExtension(
+            id=extension.id,
+            name=extension.name,
+            description=extension.description,
+            extension_type=extension.config.extension_type,
+            prompt=request.prompt,
+            permissions=extension.config.permissions,
+            host_permissions=extension.config.host_permissions,
+            manifest_data=extension.config.__dict__,
+            user_id=str(current_user.id),
+            status="completed" if extension.build_ready else "generating",
+            build_ready=extension.build_ready,
+            zip_path=extension.zip_path
+        )
+        db.add(db_extension)
+        
+        # Save components to database
+        for component in extension.components:
+            db_component = ChromeExtensionComponent(
+                extension_id=extension.id,
+                file_path=component.file_path,
+                content=component.content,
+                file_type=component.file_type,
+                description=component.description
+            )
+            db.add(db_component)
+        
+        # Update generation record
+        generation.status = "completed"
+        generation.extension_id = extension.id
+        generation.completed_at = datetime.utcnow()
+        
+        db.commit()
         
         # Prepare install instructions
         install_instructions = [
@@ -98,16 +155,34 @@ async def generate_chrome_extension(
         
     except Exception as e:
         logger.error(f"Chrome extension generation failed: {e}")
+        db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/analyze", response_model=Dict[str, Any])
+@router.post("/analyze", response_model=Dict[str, Any])
 async def analyze_extension_requirements(
-    prompt: str,
+    request: ExtensionAnalysisRequest,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Analyze extension requirements and suggest optimal configuration"""
     try:
-        analysis = await chrome_extension_generator.analyze_extension_requirements(prompt)
+        # Create generation record for tracking analysis
+        generation = ExtensionGeneration(
+            id=str(uuid.uuid4()),
+            user_id=str(current_user.id),
+            prompt=request.prompt,
+            status="analyzing"
+        )
+        db.add(generation)
+        db.commit()
+        
+        analysis = await chrome_extension_generator.analyze_extension_requirements(request.prompt)
+        
+        # Update generation record with analysis
+        generation.analysis_data = analysis
+        generation.status = "analyzed"
+        generation.completed_at = datetime.utcnow()
+        db.commit()
         
         return {
             "analysis": analysis,
@@ -121,6 +196,31 @@ async def analyze_extension_requirements(
         
     except Exception as e:
         logger.error(f"Extension analysis failed: {e}")
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/list")
+async def list_user_extensions(
+    skip: int = 0,
+    limit: int = 50,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """List all extensions created by the current user"""
+    try:
+        extensions = db.query(ChromeExtension).filter(
+            ChromeExtension.user_id == str(current_user.id)
+        ).offset(skip).limit(limit).all()
+        
+        return {
+            "extensions": [ext.to_dict() for ext in extensions],
+            "total": db.query(ChromeExtension).filter(
+                ChromeExtension.user_id == str(current_user.id)
+            ).count()
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to list extensions: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/templates", response_model=ExtensionTemplateResponse)
@@ -230,20 +330,30 @@ async def get_chrome_permissions(
 @router.get("/download/{extension_id}")
 async def download_extension(
     extension_id: str,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Download the generated Chrome extension as a ZIP file"""
     try:
-        # Get extension zip path (this would be stored in database in production)
-        zip_path = f"generated_projects/{extension_id}.zip"
+        # Get extension from database
+        extension = db.query(ChromeExtension).filter(
+            ChromeExtension.id == extension_id,
+            ChromeExtension.user_id == str(current_user.id)
+        ).first()
         
-        if not os.path.exists(zip_path):
-            raise HTTPException(status_code=404, detail="Extension not found or not ready")
+        if not extension:
+            raise HTTPException(status_code=404, detail="Extension not found")
+        
+        if not extension.build_ready or not extension.zip_path:
+            raise HTTPException(status_code=400, detail="Extension not ready for download")
+        
+        if not os.path.exists(extension.zip_path):
+            raise HTTPException(status_code=404, detail="Extension file not found")
         
         return FileResponse(
-            zip_path,
+            extension.zip_path,
             media_type="application/zip",
-            filename=f"chrome_extension_{extension_id}.zip"
+            filename=f"chrome_extension_{extension.name.replace(' ', '_')}.zip"
         )
         
     except Exception as e:
@@ -254,17 +364,36 @@ async def download_extension(
 async def preview_extension_code(
     extension_id: str,
     file_path: str = "manifest.json",
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Preview the code of a specific file in the generated extension"""
     try:
-        # This would fetch from database in production
-        # For now, return a placeholder
+        # Get extension from database
+        extension = db.query(ChromeExtension).filter(
+            ChromeExtension.id == extension_id,
+            ChromeExtension.user_id == str(current_user.id)
+        ).first()
+        
+        if not extension:
+            raise HTTPException(status_code=404, detail="Extension not found")
+        
+        # Get specific component
+        component = db.query(ChromeExtensionComponent).filter(
+            ChromeExtensionComponent.extension_id == extension_id,
+            ChromeExtensionComponent.file_path == file_path
+        ).first()
+        
+        if not component:
+            raise HTTPException(status_code=404, detail=f"File {file_path} not found in extension")
+        
         return {
-            "file_path": file_path,
-            "content": "// Extension code preview would be shown here",
-            "file_type": _get_file_type(file_path),
-            "extension_id": extension_id
+            "file_path": component.file_path,
+            "content": component.content,
+            "file_type": component.file_type,
+            "description": component.description,
+            "extension_id": extension_id,
+            "extension_name": extension.name
         }
         
     except Exception as e:
